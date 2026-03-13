@@ -197,74 +197,6 @@ current_table = calculate_current_table(combined_df)
 st.subheader("🏁 Current Standings")
 st.dataframe(current_table, use_container_width=True)
 
-
-# ---------------------------------------------------
-# FIXTURE DIFFICULTY HEATMAP
-# ---------------------------------------------------
-st.markdown("---")
-st.subheader("🗓️ Fixture Difficulty — Next 5 Games")
-
-def get_opponent_strength(opponent, ratings):
-    row = ratings[ratings.Club == opponent]
-    if row.empty:
-        return 1.0
-    return (row.iloc[0].AttackRating + row.iloc[0].DefenceRating) / 2
-
-def build_heatmap_data(fixtures, ratings, n=5):
-    teams = sorted(ratings.Club.tolist())
-    heatmap = pd.DataFrame(index=teams, columns=[f"Game {i+1}" for i in range(n)])
-    label_map = pd.DataFrame(index=teams, columns=[f"Game {i+1}" for i in range(n)])
-
-    for team in teams:
-        team_fixtures = fixtures[(fixtures['Home'] == team) | (fixtures['Away'] == team)].head(n)
-        for i, (_, row) in enumerate(team_fixtures.iterrows()):
-            if i >= n:
-                break
-            is_home = row.Home == team
-            opponent = row.Away if is_home else row.Home
-            strength = get_opponent_strength(opponent, ratings)
-            venue = "H" if is_home else "A"
-            heatmap.at[team, f"Game {i+1}"] = strength
-            label_map.at[team, f"Game {i+1}"] = f"{opponent} ({venue})"
-
-    return heatmap.astype(float), label_map
-
-heatmap_data, label_data = build_heatmap_data(remaining_to_simulate, ratings)
-
-import plotly.graph_objects as go
-
-fig = go.Figure(data=go.Heatmap(
-    z=heatmap_data.values,
-    x=heatmap_data.columns.tolist(),
-    y=heatmap_data.index.tolist(),
-    text=label_data.values,
-    texttemplate="<b>%{text}</b>",
-    textfont=dict(
-        size=14,
-        color="white"
-    ),
-    colorscale=[
-        [0.0, "#2ecc71"],
-        [0.5, "#f39c12"],
-        [1.0, "#e74c3c"],
-    ],
-    showscale=True,
-    colorbar=dict(
-        title="Difficulty",
-        tickvals=[heatmap_data.values.min(), heatmap_data.values.max()],
-        ticktext=["Easier", "Harder"]
-    )
-))
-fig.update_layout(
-    height=420,
-    margin=dict(l=10, r=10, t=10, b=10),
-    xaxis=dict(side="top"),
-    font=dict(size=12)
-)
-
-st.plotly_chart(fig, use_container_width=True)
-
-
 # ---------------------------------------------------
 # SIMULATION
 # ---------------------------------------------------
@@ -275,7 +207,6 @@ if st.button("Run Season Simulation", type="primary"):
     st.dataframe(probs.round(1), use_container_width=True)
     st.dataframe(proj[["Club", "Current", "Forecasted Total"]].round(1), use_container_width=True)
 
-# ---------------------------------------------------
 # ---------------------------------------------------
 # MATCH PREDICTOR
 # ---------------------------------------------------
