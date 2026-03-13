@@ -161,7 +161,16 @@ remaining_to_simulate = fixtures[~fixtures['UniqueID'].isin(finished_ids)]
 # SIDEBAR
 # ---------------------------------------------------
 st.sidebar.header("🛠️ What-If Scenarios")
-with st.sidebar.expander("Add Manual Result"):
+
+# Note about fixture tagging
+with st.sidebar.expander("ℹ️ Fixture Tagging Note", expanded=False):
+    st.info("""
+    **Fixtures tagged 1/2** due to each pairing played twice per season.
+    
+    Example: "Shamrock v Derry 1" = first meeting, "Shamrock v Derry 2" = return fixture.
+    """)
+
+with st.sidebar.expander("➕ Add Manual Result"):
     if not remaining_to_simulate.empty:
         selected_tag = st.selectbox("Select Fixture", remaining_to_simulate['UniqueID'].tolist())
         row = remaining_to_simulate[remaining_to_simulate['UniqueID'] == selected_tag].iloc[0]
@@ -178,7 +187,13 @@ with st.sidebar.expander("Add Manual Result"):
             })
             st.rerun()
 
-if st.session_state.manual_results and st.sidebar.button("Clear Overrides"):
+# Show current manual inputs
+if st.session_state.manual_results:
+    with st.sidebar.expander(f"📋 Current Manual Inputs ({len(st.session_state.manual_results)})", expanded=True):
+        manual_df = pd.DataFrame(st.session_state.manual_results)
+        st.dataframe(manual_df[['UniqueID', 'Home', 'Away', 'HomeGoals', 'AwayGoals']], use_container_width=True)
+
+if st.session_state.manual_results and st.sidebar.button("🗑️ Clear All Overrides"):
     st.session_state.manual_results = []
     st.rerun()
 
