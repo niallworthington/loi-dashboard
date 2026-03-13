@@ -19,68 +19,6 @@ st.title("🏆 League of Ireland 2026 Analytics Dashboard")
 LEAGUE_AVG_GOALS_HOME = 1.389
 LEAGUE_AVG_GOALS_AWAY = 1.05
 ITERATIONS = 2500
-TOTAL_GAMES_PER_TEAM = 36  # LOI Premier has 36 games per team
-
-# ---------------------------------------------------
-# DATA LOADING & UNIQUE TAGGING
-# ---------------------------------------------------
-@st.cache_data
-def load_data():
-    results_raw = pd.read_csv("current_results.csv")
-    fixtures_raw = pd.read_csv("fixtures.csv")
-    ratings = pd.read_csv("ratings.csv")
-
-    for df in [results_raw, fixtures_raw, ratings]:
-        for col in ['Home', 'Away', 'Club', 'Team']:
-            if col in df.columns:
-                df[col] = df[col].astype(str).str.strip()
-
-    # Tag played results
-    played_results = results_raw.dropna(subset=['HomeGoals', 'AwayGoals']).copy()
-    played_results['FixtureTag'] = played_results['Home'] + " v " + played_results['Away']
-    played_results['Instance'] = played_results.groupby(['Home', 'Away']).cumcount() + 1
-    played_results['UniqueID'] = played_results['FixtureTag'] + " " + played_results['Instance'].astype(str)
-
-    # Tag fixtures — offset instance by how many times that pairing already appears in played results
-    fixtures_raw['FixtureTag'] = fixtures_raw['Home'] + " v " + fixtures_raw['Away']
-    fixture_counts = fixtures_raw.groupby(['Home', 'Away']).cumcount() + 1
-    played_max = played_results.groupby(['Home', 'Away'])['Instance'].max().rename('PlayedMax')
-    fixtures_raw = fixtures_raw.join(played_max, on=['Home', 'Away'])
-    fixtures_raw['PlayedMax'] = fixtures_raw['PlayedMax'].fillna(0)
-    fixtures_raw['Instance'] = fixture_counts + fixtures_raw['PlayedMax']
-    fixtures_raw.drop(columns='PlayedMax', inplace=True)
-    fixtures_raw['UniqueID'] = fixtures_raw['FixtureTag'] + " " + fixtures_raw['Instance'].astype(str)
-
-    return played_results, fixtures_raw, ratings
-
-# ---------------------------------------------------
-# POISSON FUNCTIONS
-# ---------------------------------------------------
-def poisson(k,Here's your **complete script** with the **fixture heatmap removed** and **points pace columns added**:
-
-```python
-import streamlit as st
-import pandas as pd
-import numpy as np
-import math
-
-# ---------------------------------------------------
-# PAGE CONFIG
-# ---------------------------------------------------
-st.set_page_config(
-    page_title="LOI 2026 Analytics",
-    layout="wide"
-)
-
-st.title("🏆 League of Ireland 2026 Analytics Dashboard")
-
-# ---------------------------------------------------
-# MODEL CONSTANTS
-# ---------------------------------------------------
-LEAGUE_AVG_GOALS_HOME = 1.389
-LEAGUE_AVG_GOALS_AWAY = 1.05
-ITERATIONS = 2500
-TOTAL_GAMES_PER_TEAM = 36  # LOI Premier has 36 games per team
 
 # ---------------------------------------------------
 # DATA LOADING & UNIQUE TAGGING
@@ -121,8 +59,8 @@ def poisson(k, lam):
     return (lam**k) * np.exp(-lam) / math.factorial(k)
 
 def match_prediction(home, away, ratings):
-    h = ratings[ratings.Club == home].iloc
-    a = ratings[ratings.Club == away].iloc
+    h = ratings[ratings.Club == home].iloc[0]
+    a = ratings[ratings.Club == away].iloc[0]
 
     lam_h = LEAGUE_AVG_GOALS_HOME * (h.AttackRating / a.DefenceRating)
     lam_a = LEAGUE_AVG_GOALS_AWAY * (a.AttackRating / h.DefenceRating)
@@ -138,7 +76,7 @@ def match_prediction(home, away, ratings):
             elif i == j: draw += p
             else: away_win += p
 
-    top_5 = sorted(score_probs.items(), key=lambda x: x, reverse=True)[:5]
+    top_5 = sorted(score_probs.items(), key=lambda x: x[1], reverse=True)[:5]
 
     return home_win, draw, away_win, lam_h, lam_a, top_5
 
@@ -168,12 +106,7 @@ def calculate_current_table(df):
     table["Points"] = (table["HW"] * 3) + (table["AW"] * 3) + table["HD"] + table["AD"]
     table["GD"] = (table["HGF"] + table["AGF"]) - (table["HGA"] + table["AGA"])
     table["Played"] = table["HP"] + table["AP"]
-    
-    # Add points pace columns
-    table["Pace/36"] = (table["Points"] / table["Played"] * TOTAL_GAMES_PER_TEAM).round(1)
-    table["Proj/36"] = (table["Points"] + (len(remaining_to_simulate) * 1.4 / 10 * table["Points"] / table["Played"])).round(1)
-    
-    return table[["Team", "Played", "Points", "GD", "Pace/36", "Proj/36"]].sort_values(
+    return table[["Team", "Played", "Points", "GD"]].sort_values(
         ["Points", "GD"], ascending=False
     ).reset_index(drop=True)
 
@@ -231,7 +164,7 @@ st.sidebar.header("🛠️ What-If Scenarios")
 with st.sidebar.expander("Add Manual Result"):
     if not remaining_to_simulate.empty:
         selected_tag = st.selectbox("Select Fixture", remaining_to_simulate['UniqueID'].tolist())
-        row = remaining_to_simulate[remaining_to_simulate['UniqueID'] == selected_tag].iloc
+        row = remaining_to_simulate[remaining_to_simulate['UniqueID'] == selected_tag].iloc[0]
         c1, c2 = st.columns(2)
         h_score = c1.number_input("Home Goals", 0, 10, 0)
         a_score = c2.number_input("Away Goals", 0, 10, 0)
@@ -256,13 +189,81 @@ st.sidebar.write(f"🔮 Remaining: {len(remaining_to_simulate)}")
 st.sidebar.write(f"📐 Total: {len(played_results) + len(st.session_state.manual_results) + len(remaining_to_simulate)} / 180")
 
 # ---------------------------------------------------
-# STANDINGS (with pace columns)
+# STANDINGS
 # ---------------------------------------------------
 manual_df = pd.DataFrame(st.session_state.manual_results) if st.session_state.manual_results else pd.DataFrame(columns=played_results.columns)
 combined_df = pd.concat([played_results, manual_df], ignore_index=True)
 current_table = calculate_current_table(combined_df)
 st.subheader("🏁 Current Standings")
 st.dataframe(current_table, use_container_width=True)
+
+
+# ---------------------------------------------------
+# FIXTURE DIFFICULTY HEATMAP
+# ---------------------------------------------------
+st.markdown("---")
+st.subheader("🗓️ Fixture Difficulty — Next 5 Games")
+
+def get_opponent_strength(opponent, ratings):
+    row = ratings[ratings.Club == opponent]
+    if row.empty:
+        return 1.0
+    return (row.iloc[0].AttackRating + row.iloc[0].DefenceRating) / 2
+
+def build_heatmap_data(fixtures, ratings, n=5):
+    teams = sorted(ratings.Club.tolist())
+    heatmap = pd.DataFrame(index=teams, columns=[f"Game {i+1}" for i in range(n)])
+    label_map = pd.DataFrame(index=teams, columns=[f"Game {i+1}" for i in range(n)])
+
+    for team in teams:
+        team_fixtures = fixtures[(fixtures['Home'] == team) | (fixtures['Away'] == team)].head(n)
+        for i, (_, row) in enumerate(team_fixtures.iterrows()):
+            if i >= n:
+                break
+            is_home = row.Home == team
+            opponent = row.Away if is_home else row.Home
+            strength = get_opponent_strength(opponent, ratings)
+            venue = "H" if is_home else "A"
+            heatmap.at[team, f"Game {i+1}"] = strength
+            label_map.at[team, f"Game {i+1}"] = f"{opponent} ({venue})"
+
+    return heatmap.astype(float), label_map
+
+heatmap_data, label_data = build_heatmap_data(remaining_to_simulate, ratings)
+
+import plotly.graph_objects as go
+
+fig = go.Figure(data=go.Heatmap(
+    z=heatmap_data.values,
+    x=heatmap_data.columns.tolist(),
+    y=heatmap_data.index.tolist(),
+    text=label_data.values,
+    texttemplate="<b>%{text}</b>",
+    textfont=dict(
+        size=14,
+        color="white"
+    ),
+    colorscale=[
+        [0.0, "#2ecc71"],
+        [0.5, "#f39c12"],
+        [1.0, "#e74c3c"],
+    ],
+    showscale=True,
+    colorbar=dict(
+        title="Difficulty",
+        tickvals=[heatmap_data.values.min(), heatmap_data.values.max()],
+        ticktext=["Easier", "Harder"]
+    )
+))
+fig.update_layout(
+    height=420,
+    margin=dict(l=10, r=10, t=10, b=10),
+    xaxis=dict(side="top"),
+    font=dict(size=12)
+)
+
+st.plotly_chart(fig, use_container_width=True)
+
 
 # ---------------------------------------------------
 # SIMULATION
