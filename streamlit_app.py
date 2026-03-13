@@ -276,6 +276,7 @@ if st.button("Run Season Simulation", type="primary"):
     st.dataframe(proj[["Club", "Current", "Forecasted Total"]].round(1), use_container_width=True)
 
 # ---------------------------------------------------
+# ---------------------------------------------------
 # MATCH PREDICTOR
 # ---------------------------------------------------
 st.markdown("---")
@@ -288,11 +289,11 @@ a_p = col2.selectbox("Away Team", teams, index=1)
 if st.button("Predict"):
     hw, d, aw, xh, xa, top_scores = match_prediction(h_p, a_p, ratings)
 
-    res_df = pd.DataFrame({
-        "Outcome": [f"{h_p} Win", "Draw", f"{a_p} Win"],
-        "Probability": [hw, d, aw]
-    })
-    st.bar_chart(res_df.set_index("Outcome"))
+    # Show probabilities as text instead of bar chart
+    st.markdown("**Result Probabilities**")
+    st.write(f"{h_p} win: **{hw*100:.1f}%**")
+    st.write(f"Draw: **{d*100:.1f}%**")
+    st.write(f"{a_p} win: **{aw*100:.1f}%**")
 
     c1, c2 = st.columns(2)
     with c1:
