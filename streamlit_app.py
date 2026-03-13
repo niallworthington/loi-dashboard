@@ -11,14 +11,14 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🏆 League of Ireland 2026 Analytics Dashboard")
+st.title("🏆 League of Ireland 2026 Dashboard - NiallW Football")
 
 # ---------------------------------------------------
 # MODEL CONSTANTS
 # ---------------------------------------------------
 LEAGUE_AVG_GOALS_HOME = 1.389
 LEAGUE_AVG_GOALS_AWAY = 1.05
-ITERATIONS = 2500
+ITERATIONS = 1000
 
 # ---------------------------------------------------
 # DATA LOADING & UNIQUE TAGGING
