@@ -138,7 +138,7 @@ def run_simulation(ratings, remaining_fixtures, current_pts_dict):
 
     probs["Title %"] = (positions == 1).mean(axis=0) * 100
     probs["Europe %"] = (positions <= 3).mean(axis=0) * 100
-    probs["Relegation %"] = (positions <= 9).mean(axis=0) * 100
+    probs["Relegation %"] = (positions >= 9).mean(axis=0) * 100
     proj = ratings.copy()
     proj["Current"] = start_pts
     proj["Forecasted Total"] = final_points.mean(axis=0)
