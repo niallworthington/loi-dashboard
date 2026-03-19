@@ -18,7 +18,7 @@ st.title("🏆 League of Ireland 2026 Dashboard - NiallW Football")
 # ---------------------------------------------------
 LEAGUE_AVG_GOALS_HOME = 1.389
 LEAGUE_AVG_GOALS_AWAY = 1.05
-ITERATIONS = 1000
+ITERATIONS = 10000
 
 # ---------------------------------------------------
 # DATA LOADING & UNIQUE TAGGING
